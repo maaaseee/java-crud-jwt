@@ -10,7 +10,7 @@ import jakarta.validation.Payload;
 
 @Constraint(validatedBy = ExistsOnDbValidation.class)
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD})
+@Target({ElementType.FIELD, ElementType.METHOD})
 public @interface ExistsOnDb {
     String message() default "ya existe en la base de datos.";
     Class<?>[] groups() default {};
