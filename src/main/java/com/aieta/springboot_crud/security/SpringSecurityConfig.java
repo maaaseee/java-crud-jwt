@@ -9,9 +9,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +22,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.aieta.springboot_crud.security.filter.JwtAuthenticationFilter;
 import com.aieta.springboot_crud.security.filter.JwtValidationFilter;
@@ -27,7 +31,16 @@ import com.aieta.springboot_crud.security.filter.JwtValidationFilter;
 
 @Configuration
 @EnableMethodSecurity
-public class SpringSecurityConfig {
+public class SpringSecurityConfig implements WebMvcConfigurer {
+
+    @Autowired
+    private SecurityHeadersInterceptor securityHeadersInterceptor;
+
+    @SuppressWarnings("null")
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(securityHeadersInterceptor);
+    }
 
     @Autowired
     private AuthenticationConfiguration authenticationConfiguration;
@@ -55,10 +68,19 @@ public class SpringSecurityConfig {
                 //.requestMatchers(HttpMethod.DELETE, "/api/products/{id}").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
-            .addFilter(new JwtAuthenticationFilter(authenticationManager()))
-            .addFilter(new JwtValidationFilter(authenticationManager()))
+            .headers(headers -> headers
+                .contentTypeOptions(Customizer.withDefaults()) // Opcional
+                .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny) // Previene ataques Clickjacking
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000)
+                    .preload(true)) // Fuerza HTTPS
+                .cacheControl(cache -> cache.disable()) // Evita el almacenamiento en caché de respuestas sensibles
+            )
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .addFilter(new JwtAuthenticationFilter(authenticationManager()))
+            .addFilter(new JwtValidationFilter(authenticationManager()))
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )

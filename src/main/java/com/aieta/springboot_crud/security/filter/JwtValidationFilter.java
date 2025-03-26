@@ -17,11 +17,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 import com.aieta.springboot_crud.security.SimpleGrantedAuthorityJsonCreator;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,16 +40,15 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         
-        String header = request.getHeader(HEADER_AUTHORIZATION);
+        String token = validateHeader(request, response, chain);
 
-        if (header == null || !header.startsWith(PREFIX_TOKEN)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        String token = header.replace(PREFIX_TOKEN, "");
         try {
-            Claims claims = Jwts.parser().verifyWith(SECRET_KEY).build().parseSignedClaims(token).getPayload();
+            Claims claims = Jwts.parser()
+                                .verifyWith(getSecretKey())
+                                .build()
+                                .parseSignedClaims(token)
+                                .getPayload();
+            
             String username = claims.getSubject();
             //String secondUsername = (String) claims.get("username");
             Object authoritiesClaims = claims.get("authorities");
@@ -54,26 +56,56 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
             Collection<? extends GrantedAuthority> authorities = Arrays.asList(
                     new ObjectMapper().addMixIn(
                         SimpleGrantedAuthority.class, 
-                        SimpleGrantedAuthorityJsonCreator.class)
-                    .readValue(
+                        SimpleGrantedAuthorityJsonCreator.class
+                    ).readValue(
                         authoritiesClaims.toString().getBytes(),
-                        SimpleGrantedAuthority[].class)
+                        SimpleGrantedAuthority[].class
+                    )
                 );
 
             UsernamePasswordAuthenticationToken jwt = new UsernamePasswordAuthenticationToken(username, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(jwt);
             chain.doFilter(request, response);
+        } 
+        catch (ExpiredJwtException ex) {
+            Map<String, String> body = new HashMap<>();
+            body.put("error", ex.getMessage());
+            body.put("message", "El token JWT ha caducado");
 
-        } catch (JwtException ex) {
+            setResponseForException(response, body);
+        } 
+        catch (MalformedJwtException ex) {
+            Map<String, String> body = new HashMap<>();
+            body.put("error", ex.getMessage());
+            body.put("message", "El formato del token JWT no es válido.");
+
+            setResponseForException(response, body);
+        }
+        catch (JwtException ex) {
             Map<String, String> body = new HashMap<>();
             body.put("error", ex.getMessage());
             body.put("message", "El token JWT no es válido");
 
-            response.getWriter().write(new ObjectMapper().writeValueAsString(body));
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType(CONTENT_TYPE);
+            setResponseForException(response, body);
         }
     }
 
-    
+    private String validateHeader(HttpServletRequest request, HttpServletResponse response, FilterChain chain) 
+            throws IOException, ServletException {
+        String header = request.getHeader(HEADER_AUTHORIZATION);
+
+        if (header == null || !header.startsWith(PREFIX_TOKEN)) {
+            chain.doFilter(request, response);
+            throw new MalformedJwtException("El formato del token JWT no es válido");
+        }
+        
+        return header.replace(PREFIX_TOKEN, "");
+    }
+
+    private void setResponseForException(HttpServletResponse response, Map<String, String> body) 
+            throws JsonProcessingException, IOException {
+        response.getWriter().write(new ObjectMapper().writeValueAsString(body));
+        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        response.setContentType(CONTENT_TYPE);
+    }
 }
