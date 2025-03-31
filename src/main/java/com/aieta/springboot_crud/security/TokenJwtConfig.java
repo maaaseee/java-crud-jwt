@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 
 @Configuration
 public class TokenJwtConfig {
@@ -15,18 +16,25 @@ public class TokenJwtConfig {
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String CONTENT_TYPE = "application/json";
     private static String secretKey;
-
-    @Value("${jwt.expirationtime}")
-    public static Long expirationTime;
+    private static Long expirationTime;
 
     @Value("${jwt.secret}")
-    public void secretKey(String secretKey) {
-        TokenJwtConfig.secretKey = secretKey;
+    private String secretKeyValue;
+
+    @Value("${jwt.expirationtime}")
+    private Long expirationTimeValue;
+
+    @PostConstruct
+    public void init() {
+        secretKey = secretKeyValue;
+        expirationTime = expirationTimeValue;
     }
 
     public static SecretKey getSecretKey() {
-        //byte[] decodedKey = Base64.getDecoder().decode(secretKey);
-        //return new SecretKeySpec(decodedKey, 0, decodedKey.length, "HmacSHA256");
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
+    }
+
+    public static Long getExpirationTime() {
+        return expirationTime;
     }
 }

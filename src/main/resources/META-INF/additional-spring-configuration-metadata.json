@@ -2,7 +2,7 @@
     "properties": [
       {
         "name": "jwt.expirationtime",
-        "type": "java.lang.String",
+        "type": "java.lang.Long",
         "description": "A description for 'jwt.expirationtime'"
       },
       {

@@ -30,7 +30,6 @@ public class ProductController {
     private ProductService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public List<Product> list() {
         return service.findAll();
     }

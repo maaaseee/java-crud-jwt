@@ -2,7 +2,6 @@ package com.aieta.springboot_crud.security;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,8 +11,16 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SecurityHeadersInterceptor implements HandlerInterceptor {
 
     @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+            throws Exception {
         response.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none';");
         response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader("X-XSS-Protection", "1; mode=block");
+        response.setHeader("X-Frame-Options", "DENY");
+        
+        return true; // Continuar con el procesamiento de la solicitud
     }
+
+    
 }

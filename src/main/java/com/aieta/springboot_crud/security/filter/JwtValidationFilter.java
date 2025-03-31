@@ -41,6 +41,10 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
             throws IOException, ServletException {
         
         String token = validateHeader(request, response, chain);
+        if (token == null) {
+            chain.doFilter(request, response);
+            return;
+        }
 
         try {
             Claims claims = Jwts.parser()
@@ -95,8 +99,7 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
         String header = request.getHeader(HEADER_AUTHORIZATION);
 
         if (header == null || !header.startsWith(PREFIX_TOKEN)) {
-            chain.doFilter(request, response);
-            throw new MalformedJwtException("El formato del token JWT no es válido");
+            return null;
         }
         
         return header.replace(PREFIX_TOKEN, "");

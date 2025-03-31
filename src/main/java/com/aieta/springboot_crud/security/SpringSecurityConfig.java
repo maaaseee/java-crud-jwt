@@ -18,12 +18,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.aieta.springboot_crud.security.filter.JwtAuthenticationFilter;
 import com.aieta.springboot_crud.security.filter.JwtValidationFilter;
@@ -31,16 +30,7 @@ import com.aieta.springboot_crud.security.filter.JwtValidationFilter;
 
 @Configuration
 @EnableMethodSecurity
-public class SpringSecurityConfig implements WebMvcConfigurer {
-
-    @Autowired
-    private SecurityHeadersInterceptor securityHeadersInterceptor;
-
-    @SuppressWarnings("null")
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(securityHeadersInterceptor);
-    }
+public class SpringSecurityConfig {
 
     @Autowired
     private AuthenticationConfiguration authenticationConfiguration;
@@ -59,7 +49,7 @@ public class SpringSecurityConfig implements WebMvcConfigurer {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers(HttpMethod.GET, "/api/users").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
                 //.requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
                 //.requestMatchers(HttpMethod.GET, "/api/products", "/api/products/{id}").hasAnyRole("ADMIN", "USER")
@@ -80,7 +70,7 @@ public class SpringSecurityConfig implements WebMvcConfigurer {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .addFilter(new JwtAuthenticationFilter(authenticationManager()))
-            .addFilter(new JwtValidationFilter(authenticationManager()))
+            .addFilterBefore(new JwtValidationFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
